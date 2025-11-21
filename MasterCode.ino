@@ -7,6 +7,12 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
+#include "Wire.h"
+#include <MPU6050_light.h>
+
+MPU6050 mpu(Wire);
+unsigned long timer = 0;
+
 // REPLACE WITH THE RECEIVER'S MAC Address
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -32,8 +38,24 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
  
 void setup() {
-  // Init Serial Monitor
+
   Serial.begin(115200);
+
+  Wire.begin();
+  
+  byte status = mpu.begin();
+  Serial.print(F("MPU6050 status: "));
+  Serial.println(status);
+  while(status!=0){ } // stop everything if could not connect to MPU6050
+  
+  Serial.println(F("Calculating offsets, do not move MPU6050"));
+  delay(1000);
+  // mpu.upsideDownMounting = true; // uncomment this line if the MPU6050 is mounted upside-down
+  mpu.calcOffsets(); // gyro and accelero
+  Serial.println("Done!\n");
+
+  // Init Serial Monitor
+  
 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -61,6 +83,16 @@ void setup() {
 }
  
 void loop() {
+
+  mpu.update();
+
+  Serial.print("X : ");
+	Serial.print(mpu.getAngleX());
+	Serial.print("\tY : ");
+	Serial.print(mpu.getAngleY());
+	Serial.print("\tZ : ");
+	Serial.println(mpu.getAngleZ());
+
   // Set values to send
   myData.id = 1;
   myData.x_angle = mpu.getAngleX();
@@ -76,5 +108,5 @@ void loop() {
   else {
     Serial.println("Error sending the data");
   }
-  delay(10000);
+  delay(1000);
 }
